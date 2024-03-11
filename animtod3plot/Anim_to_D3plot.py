@@ -591,28 +591,29 @@ class readAndConvert:
                     _["convert"]        = convert.element_shell_history_vars
                     _["tracker"]        = shell_ids_tracker
                     _["additional"]     = [nip_shell]
+                try:
+                    if rr.raw_header["nbEFunc3D"] > 0:
+                        flag = "SOLIDS"
 
-                if rr.raw_header["nbEFunc3D"] > 0:
-                    flag = "SOLIDS"
+                        database_extent_binary[flag] = {}
+                        _ = database_extent_binary[flag]
 
-                    database_extent_binary[flag] = {}
-                    _ = database_extent_binary[flag]
+                        # [0] are essential arrays and need creating even if no data available
 
-                    # [0] are essential arrays and need creating even if no data available
+                        database_extent_binary[flag][0] = []
+                        # database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_is_alive]
+                        database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_history_variables]
 
-                    database_extent_binary[flag][0] = []
-                    # database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_is_alive]
-                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_history_variables]
-
-                    array_requirements[ArrayType.element_solid_history_variables] = {}
-                    _ = array_requirements[ArrayType.element_solid_history_variables]
-                    # Radioss outputs needed to compute Dyna output
-                    _["dependents"]     = ["element_solid_max_damage_element"]
-                    _["shape"]          = (1,n_solid,n_solid_layers,1)
-                    _["convert"]        = convert.element_solid_history_vars
-                    _["tracker"]        = solid_ids_tracker
-                    _["additional"]     = []
-
+                        array_requirements[ArrayType.element_solid_history_variables] = {}
+                        _ = array_requirements[ArrayType.element_solid_history_variables]
+                        # Radioss outputs needed to compute Dyna output
+                        _["dependents"]     = ["element_solid_max_damage_element"]
+                        _["shape"]          = (1,n_solid,n_solid_layers,1)
+                        _["convert"]        = convert.element_solid_history_vars
+                        _["tracker"]        = solid_ids_tracker
+                        _["additional"]     = []
+                except:
+                    pass
             "Assign the arrays to the D3PLOT class for writing"
                         
             "Generate the availability check"
@@ -710,7 +711,7 @@ if __name__ == '__main__':
              
     #file_stem = "C:/Users/PC/Downloads/test/DynaOpt"    
     #file_stem = "P:/Optimisation/A001a/Baseline/FFB_0/DynaOpt"
-    file_stem = "./Tensile1500mm_permin_noparam"
+    file_stem = "./tensile_LAW36_BIQUAD"
     #file_stem = "C:/Users/PC/Downloads/test4/CRA2AV4"
     
     a2d = readAndConvert(file_stem, use_shell_mask=False)
