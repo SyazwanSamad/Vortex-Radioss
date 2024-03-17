@@ -4,7 +4,7 @@
 
 from lasso.dyna.d3plot import D3plot
 from lasso.dyna.array_type import ArrayType
-import RadiossReader
+from vortex_radioss.animtod3plot import RadiossReader
 
 import numpy as np
 import os
@@ -131,7 +131,29 @@ class convert:
         out[:, 0]    = data[1]
         
         return out    
-                
+    def element_shell_history_vars(*data):
+
+        shell_num = len(data[0])
+        nip = data[2][0]
+
+        out = np.zeros(shape=(shell_num, nip, 1))
+
+        # Top integration point
+        out[:, -1, 0] = data[0]
+
+        # Bottom integration point
+        out[:, 0, 0]   = data[1]
+
+        return out
+
+    def element_solid_history_vars(*data):
+
+        solid_num = len(data[0])
+        #nip = data[2][0]
+        out = np.zeros(shape=(solid_num, 1, 1))
+        out[:, -1, 0] = data[0]
+
+        return out
 class readAndConvert:
     
     def __init__(
@@ -253,6 +275,8 @@ class readAndConvert:
         
         n_shell = 0
         nip_shell = 2
+        n_solid = 0
+        n_solid_layers = 1
         allowable_part_strings = ["_rigid_wall_",  ": RIGIDWALL_"]
         if rr.raw_header["nbFacets"] > 0:
              
@@ -551,6 +575,7 @@ class readAndConvert:
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_is_alive]  
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_stress]    
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_effective_plastic_strain]
+                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_history_vars]                                                                               
                     
                     database_extent_binary[flag][1] = _[0] + [ArrayType.element_shell_thickness]        
                     database_extent_binary[flag][1] = _[1] + [ArrayType.element_shell_internal_energy]                        
@@ -604,7 +629,36 @@ class readAndConvert:
                     _["convert"]        = convert.element_shell_effective_plastic_strain
                     _["tracker"]        = shell_ids_tracker  
                     _["additional"]     = [nip_shell]
-                   
+                    # Dyna output
+                    array_requirements[ArrayType.element_shell_history_vars] = {}
+                    _ = array_requirements[ArrayType.element_shell_history_vars]
+                    # Radioss outputs needed to comptute Dyna output
+                    _["dependents"] = ["element_shell_damage,(layer___1)__", "element_shell_damage,(layer___5)__"]
+                    _["shape"] = (1, n_shell, nip_shell, 1)
+                    _["convert"] = convert.element_shell_history_vars
+                    _["tracker"] = shell_ids_tracker
+                    _["additional"] = [nip_shell]
+                if rr.raw_header["nbEFunc3D"] > 0:
+                    flag = "SOLIDS"
+
+                    database_extent_binary[flag] = {}
+                    _ = database_extent_binary[flag]
+
+                    # [0] are essential arrays and need creating even if no data available
+
+                    database_extent_binary[flag][0] = []
+                    # database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_is_alive]
+                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_history_variables]
+
+                    array_requirements[ArrayType.element_solid_history_variables] = {}
+                    _ = array_requirements[ArrayType.element_solid_history_variables]
+                    # Radioss outputs needed to compute Dyna output
+                    _["dependents"] = ["element_solid_max_damage_element"]
+                    _["shape"] = (1, n_solid, n_solid_layers, 1)
+                    _["convert"] = convert.element_solid_history_vars
+                    _["tracker"] = solid_ids_tracker
+                    _["additional"] = []
+                                       
                 flag = "PARTS"
                 
                 database_extent_binary[flag] = {}      
@@ -720,7 +774,7 @@ class readAndConvert:
         
 if __name__ == '__main__':   
              
-    file_stem = "C:/Users/PC/Downloads/roofc/DynaOpt"
+    file_stem = "./tensile_LAW36_BIQUAD"
 
     a2d = readAndConvert(file_stem, use_shell_mask=False, silent=False)
     
