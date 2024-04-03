@@ -111,7 +111,27 @@ class convert:
         out[:, 0, 3]   = data[1][:, 2]
         
         return out
-    
+        
+    @staticmethod
+    def element_solid_stress(*data):
+        
+        # Mid-surface stresses if present are not converted
+        # Only Upper and Lower stresses are converted 
+        # Out of plane stresses not converted
+        # Co-ordinate systems not corrected for - should be OK for Von-Mises, Tresca etc and \
+        # stress principles
+        # [σx, σy, σz, σxy, σyz, σxz]
+        
+        shell_num      = len(data[0])
+        out            = np.zeros(shape=(shell_num, 1, 6))    
+        out[:, -1, 0]   = data[0][:, 0]
+        out[:, -1, 1]   = data[0][:, 1]
+        out[:, -1, 2]   = data[0][:, 2]
+        out[:, -1, 3]   = data[0][:, 3]
+        out[:, -1, 4]   = data[0][:, 4]
+        out[:, -1, 5]   = data[0][:, 5]
+        
+        return out    
     @staticmethod
     def element_shell_effective_plastic_strain(*data):
         
@@ -131,6 +151,8 @@ class convert:
         out[:, 0]    = data[1]
         
         return out    
+    
+    @staticmethod
     def element_shell_history_vars(*data):
 
         shell_num = len(data[0])
@@ -145,15 +167,36 @@ class convert:
         out[:, 0, 0]   = data[1]
 
         return out
-
+    
+    @staticmethod
     def element_solid_history_vars(*data):
 
         solid_num = len(data[0])
-        #nip = data[2][0]
         out = np.zeros(shape=(solid_num, 1, 1))
+        #out = np.zeros(shape=(solid_num, 1, 2))
         out[:, -1, 0] = data[0]
+        #out[:, -1, 1] = data[1]
 
         return out
+        
+    def element_solid_history_vars_vmises(*data):
+
+        solid_num = len(data[0])
+        out = np.zeros(shape=(solid_num, 1, 1))
+        out = np.zeros(shape=(solid_num, 1, 2))
+        out[:, -1, 0] = data[0]
+        out[:, -1, 1] = data[1]
+
+        return out
+        
+    @staticmethod    
+    def element_solid_effective_plastic_strain(*data):
+
+        solid_num = len(data[0])
+        out = np.zeros(shape=(solid_num, 1))
+        out[:, -1] = data[0]
+        return out
+        
 class readAndConvert:
     
     def __init__(
@@ -566,6 +609,13 @@ class readAndConvert:
                     
                     flag = "SHELLS"
                     
+                    flag_shell_dama   = 1
+                    
+                    try:
+                        rr.arrays["element_shell_damage,(layer___1)__"]
+                    except:
+                        flag_shell_dama = 0                    
+                    
                     database_extent_binary[flag] = {}      
                     _ = database_extent_binary[flag]
                     
@@ -575,7 +625,9 @@ class readAndConvert:
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_is_alive]  
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_stress]    
                     database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_effective_plastic_strain]
-                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_history_vars]                                                                               
+                    
+                    if flag_shell_dama == 1:
+                        database_extent_binary[flag][0] = _[0] + [ArrayType.element_shell_history_vars]                                                                               
                     
                     database_extent_binary[flag][1] = _[0] + [ArrayType.element_shell_thickness]        
                     database_extent_binary[flag][1] = _[1] + [ArrayType.element_shell_internal_energy]                        
@@ -629,18 +681,40 @@ class readAndConvert:
                     _["convert"]        = convert.element_shell_effective_plastic_strain
                     _["tracker"]        = shell_ids_tracker  
                     _["additional"]     = [nip_shell]
-                    # Dyna output
-                    array_requirements[ArrayType.element_shell_history_vars] = {}
-                    _ = array_requirements[ArrayType.element_shell_history_vars]
-                    # Radioss outputs needed to comptute Dyna output
-                    _["dependents"] = ["element_shell_damage,(layer___1)__", "element_shell_damage,(layer___5)__"]
-                    _["shape"] = (1, n_shell, nip_shell, 1)
-                    _["convert"] = convert.element_shell_history_vars
-                    _["tracker"] = shell_ids_tracker
-                    _["additional"] = [nip_shell]
+                    
+                    if flag_shell_dama == 1:
+                        # Dyna output
+                        array_requirements[ArrayType.element_shell_history_vars] = {}
+                        _ = array_requirements[ArrayType.element_shell_history_vars]
+                        # Radioss outputs needed to comptute Dyna output
+                        _["dependents"] = ["element_shell_damage,(layer___1)__", "element_shell_damage,(layer___5)__"]
+                        _["shape"] = (1, n_shell, nip_shell, 1)
+                        _["convert"] = convert.element_shell_history_vars
+                        _["tracker"] = shell_ids_tracker
+                        _["additional"] = [nip_shell]
+                
                 if rr.raw_header["nbEFunc3D"] > 0:
                     flag = "SOLIDS"
+                    
+                    flag_solid_stress = 1
+                    flag_solid_dama   = 1
+                    flag_solid_vmises = 1
+                    
+                    try:
+                        rr.arrays["element_solid_stress"]
+                    except:
+                        flag_solid_stress = 0
+                        
+                    try:
+                        rr.arrays["element_solid_max_damage_element"]
+                    except:
+                        flag_solid_dama = 0
 
+                    try:
+                        rr.arrays["element_solid_von_mises"]
+                    except:
+                        flag_solid_vmises = 0                        
+                    
                     database_extent_binary[flag] = {}
                     _ = database_extent_binary[flag]
 
@@ -648,17 +722,52 @@ class readAndConvert:
 
                     database_extent_binary[flag][0] = []
                     # database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_is_alive]
-                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_history_variables]
-
-                    array_requirements[ArrayType.element_solid_history_variables] = {}
-                    _ = array_requirements[ArrayType.element_solid_history_variables]
+                    database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_effective_plastic_strain]
+                    if flag_solid_stress == 1:
+                        database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_stress] 
+                    
+                    if flag_solid_dama == 1:
+                        database_extent_binary[flag][0] = _[0] + [ArrayType.element_solid_history_variables]
+                    
+                    array_requirements[ArrayType.element_solid_effective_plastic_strain] = {}
+                    _ = array_requirements[ArrayType.element_solid_effective_plastic_strain]
                     # Radioss outputs needed to compute Dyna output
-                    _["dependents"] = ["element_solid_max_damage_element"]
-                    _["shape"] = (1, n_solid, n_solid_layers, 1)
-                    _["convert"] = convert.element_solid_history_vars
+                    _["dependents"] = ["element_solid_plastic_strain"]
+                    _["shape"] = (1, n_solid, n_solid_layers)
+                    _["convert"] = convert.element_solid_effective_plastic_strain
                     _["tracker"] = solid_ids_tracker
-                    _["additional"] = []
-                                       
+                    _["additional"] = []    
+  
+                    if flag_solid_dama == 1 and flag_solid_vmises == 1:
+                        array_requirements[ArrayType.element_solid_history_variables] = {}
+                        _ = array_requirements[ArrayType.element_solid_history_variables]
+                        # Radioss outputs needed to compute Dyna output
+                        _["dependents"] = ["element_solid_max_damage_element", "element_solid_von_mises"]
+                        _["shape"] = (1, n_solid, n_solid_layers, 2)
+                        _["convert"] = convert.element_solid_history_vars_vmises
+                        _["tracker"] = solid_ids_tracker
+                        _["additional"] = []
+                    
+                    if flag_solid_dama == 1 and flag_solid_vmises == 0:
+                        array_requirements[ArrayType.element_solid_history_variables] = {}
+                        _ = array_requirements[ArrayType.element_solid_history_variables]
+                        # Radioss outputs needed to compute Dyna output
+                        _["dependents"] = ["element_solid_max_damage_element"]
+                        _["shape"] = (1, n_solid, n_solid_layers, 1)
+                        _["convert"] = convert.element_solid_history_vars
+                        _["tracker"] = solid_ids_tracker
+                        _["additional"] = []
+                    
+                    if flag_solid_stress == 1:
+                        array_requirements[ArrayType.element_solid_stress] = {}
+                        _ = array_requirements[ArrayType.element_solid_stress]
+                        # Radioss outputs needed to compute Dyna output
+                        _["dependents"] = ["element_solid_stress"]
+                        _["shape"] = (1, n_solid, n_solid_layers, 6)
+                        _["convert"] = convert.element_solid_stress
+                        _["tracker"] = solid_ids_tracker
+                        _["additional"] = [n_solid_layers]   
+                    
                 flag = "PARTS"
                 
                 database_extent_binary[flag] = {}      
