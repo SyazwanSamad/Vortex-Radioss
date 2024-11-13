@@ -313,7 +313,7 @@ class readAndConvert:
             print("No files found..\nPlease check file stem:\ne.g\nC:/Folder/ModelA00*\nWould be:\nC:/Folder/Model*")
             return
         else:
-            rr = RadiossReader(file_list[0])  
+            rr = RadiossReader.RadiossReader(file_list[0])  
         
         #rr.raw_header["nbElts1D"] = 0
         
@@ -538,7 +538,7 @@ class readAndConvert:
         for ifile, file in enumerate(tqdm(file_list, disable = silent)):            
             
             if ifile:
-                rr = RadiossReader(file) 
+                rr = RadiossReader.RadiossReader(file) 
                 #rr.raw_header["nbElts1D"] = 0
                 
             
