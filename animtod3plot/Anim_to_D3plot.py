@@ -123,8 +123,8 @@ class convert:
         # stress principles
         # [σx, σy, σz, σxy, σyz, σxz]
         
-        shell_num      = len(data[0])
-        out            = np.zeros(shape=(shell_num, 1, 6))    
+        solid_num      = len(data[0])
+        out            = np.zeros(shape=(solid_num, 1, 6))    
         out[:, -1, 0]   = data[0][:, 0]
         out[:, -1, 1]   = data[0][:, 1]
         out[:, -1, 2]   = data[0][:, 2]
