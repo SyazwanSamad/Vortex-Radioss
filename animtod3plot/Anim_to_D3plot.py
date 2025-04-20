@@ -87,15 +87,7 @@ class convert:
         return out   
     
     @staticmethod
-    def element_shell_stress(*data):
-        
-        # Mid-surface stresses if present are not converted
-        # Only Upper and Lower stresses are converted 
-        # Out of plane stresses not converted
-        # Co-ordinate systems not corrected for - should be OK for Von-Mises, Tresca etc and \
-        # stress principles
-        # [σx, σy, σz, σxy, σyz, σxz]
-        
+    def element_shell_stress(*data):     
         shell_num      = len(data[0])
         nip            = data[2][0] 
         
